@@ -16,3 +16,6 @@ node_modules/
 # Data
 chroma_data/
 *.sqlite3
+
+# Generated RAG corpus
+ai-service/corpus/*.jsonl
