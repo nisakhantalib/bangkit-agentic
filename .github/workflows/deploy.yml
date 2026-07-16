@@ -1,0 +1,51 @@
+name: deploy ai-service
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths: ["ai-service/**", "web/data/**"]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Only attempt deploy when AWS is configured (repo variable DEPLOY_ENABLED = "true")
+    if: vars.DEPLOY_ENABLED == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPO: ${{ vars.ECR_REPOSITORY }}
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -f ai-service/Dockerfile -t "$REGISTRY/$REPO:$TAG" -t "$REGISTRY/$REPO:latest" .
+          docker push "$REGISTRY/$REPO:$TAG"
+          docker push "$REGISTRY/$REPO:latest"
+
+      - name: Deploy to App Runner
+        uses: awslabs/amazon-app-runner-deploy@main
+        with:
+          service: bangkit-ai-service
+          image: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
+          access-role-arn: ${{ secrets.AWS_APPRUNNER_ACCESS_ROLE_ARN }}
+          region: ${{ vars.AWS_REGION }}
+          cpu: 1
+          memory: 2
+          port: 8000
+          wait-for-service-stability-seconds: 300
