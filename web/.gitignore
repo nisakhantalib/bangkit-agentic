@@ -1,0 +1,7 @@
+node_modules
+.next
+dist
+.env
+.env.*
+data/math-t5-kssm.pdf
+data/sains-t5-kssm.pdf

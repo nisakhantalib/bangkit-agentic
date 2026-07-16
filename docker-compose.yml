@@ -1,0 +1,12 @@
+services:
+  ai-service:
+    build: ./ai-service
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./ai-service/.env
+  # chroma vector store arrives in Milestone 2:
+  # chroma:
+  #   image: chromadb/chroma
+  #   ports: ["8001:8000"]
+  #   volumes: ["./chroma_data:/chroma/chroma"]

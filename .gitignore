@@ -1,7 +1,18 @@
-node_modules
-.next
-dist
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Env & secrets
 .env
-.env.*
-data/math-t5-kssm.pdf
-data/sains-t5-kssm.pdf
+*.pem
+
+# Node (web/)
+node_modules/
+.next/
+
+# Data
+chroma_data/
+*.sqlite3
