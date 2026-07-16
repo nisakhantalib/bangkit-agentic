@@ -1,4 +1,4 @@
-name: deploy ai-service
+name: deploy ai-service (Azure)
 
 on:
   workflow_dispatch:
@@ -7,45 +7,43 @@ on:
     paths: ["ai-service/**", "web/data/**"]
 
 permissions:
-  id-token: write
+  id-token: write   # OIDC token for Azure login — no stored cloud credentials
   contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Only attempt deploy when AWS is configured (repo variable DEPLOY_ENABLED = "true")
+    # Dormant until you set the repo variable DEPLOY_ENABLED=true
     if: vars.DEPLOY_ENABLED == 'true'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Login to Amazon ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push image
-        env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-          REPO: ${{ vars.ECR_REPOSITORY }}
-          TAG: ${{ github.sha }}
+      - name: Build and push image (ACR cloud build)
         run: |
-          docker build -f ai-service/Dockerfile -t "$REGISTRY/$REPO:$TAG" -t "$REGISTRY/$REPO:latest" .
-          docker push "$REGISTRY/$REPO:$TAG"
-          docker push "$REGISTRY/$REPO:latest"
+          az acr build \
+            --registry "${{ vars.ACR_NAME }}" \
+            --image "bangkit-ai-service:${{ github.sha }}" \
+            --image "bangkit-ai-service:latest" \
+            --file ai-service/Dockerfile \
+            .
 
-      - name: Deploy to App Runner
-        uses: awslabs/amazon-app-runner-deploy@main
-        with:
-          service: bangkit-ai-service
-          image: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ github.sha }}
-          access-role-arn: ${{ secrets.AWS_APPRUNNER_ACCESS_ROLE_ARN }}
-          region: ${{ vars.AWS_REGION }}
-          cpu: 1
-          memory: 2
-          port: 8000
-          wait-for-service-stability-seconds: 300
+      - name: Deploy to Azure Container Apps
+        run: |
+          az containerapp update \
+            --name "${{ vars.CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ vars.ACR_NAME }}.azurecr.io/bangkit-ai-service:${{ github.sha }}"
+
+      - name: Show app URL
+        run: |
+          az containerapp show \
+            --name "${{ vars.CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query properties.configuration.ingress.fqdn -o tsv
