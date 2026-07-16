@@ -18,3 +18,16 @@ uvicorn app.main:app --reload
 ```
 
 Run tests: `pytest`
+
+## Frontend ↔ AI service integration
+
+The `web/` app works standalone against Groq by default. To route tutor chat
+through the Python multi-agent service, set in `web/.env`:
+
+```
+AI_SERVICE_URL=<deployed service URL>
+AI_SERVICE_API_KEY=<shared service key>
+```
+
+With these unset, behaviour is unchanged (strangler-fig migration). See
+`ai-service/DEPLOY.md` for deploying the service.
