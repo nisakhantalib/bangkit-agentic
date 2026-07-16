@@ -1,0 +1,3 @@
+{"id": "tutor-001", "subject": "sains", "chapter": "1", "question": "Apakah maksud mikroorganisma?", "must_include": ["mikroskop"], "must_cite": true}
+{"id": "tutor-002", "subject": "sains", "chapter": "1", "question": "Apakah kepentingan flora normal?", "must_include": ["pencernaan"], "must_cite": true}
+{"id": "tutor-003", "subject": "matematik", "chapter": "1", "question": "Apakah itu ubahan langsung?", "must_include": ["langsung"], "must_cite": true}

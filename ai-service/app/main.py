@@ -8,6 +8,7 @@ from app.graph.build import build_graph
 from app.graph.deps import GraphDeps
 from app.llm.groq_client import groq_client
 from app.llm.router import ModelRouter
+from app.observability import configure_tracing
 from app.rag.embeddings import HashingEmbedder
 from app.rag.ingest import ingest
 from app.rag.retriever import Retriever
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app() -> FastAPI:
+    configure_tracing()
     app = FastAPI(title="Bangkit AI Service", version="0.1.0")
 
     model_router = ModelRouter(client=groq_client)
