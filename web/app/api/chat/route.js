@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Groq from 'groq-sdk'
 import { subjects } from '@/data/subjects'
+import { callAgentService, isAgentServiceEnabled } from '@/lib/agentService'
 
 // Difficulty level prompts 
 const DIFFICULTY_PROMPTS = {
@@ -74,6 +75,25 @@ export async function POST(request) {
     }
     console.log('📚 Context received by API:', context);
 
+    // Opt-in delegation to the Python multi-agent service. When AI_SERVICE_URL
+    // is set, the tutor request is handled by the agent graph (RAG-grounded,
+    // cited). When unset, we fall through to the existing Groq path below —
+    // a strangler-fig migration with zero behaviour change by default.
+    if (isAgentServiceEnabled()) {
+      try {
+        const result = await callAgentService({
+          request: message,
+          subject: subjectKey === 'math' ? 'matematik' : 'sains',
+        })
+        if (result.answer) {
+          return NextResponse.json({ response: result.answer, sources: result.sources, via: 'agent-service' })
+        }
+        // No answer (e.g. service error) -> fall through to Groq path.
+        console.warn('agent service returned no answer, falling back to Groq:', result.error)
+      } catch (err) {
+        console.warn('agent service call failed, falling back to Groq:', err.message)
+      }
+    }
 
     const groqApiKey = process.env.GROQ_API_KEY
 

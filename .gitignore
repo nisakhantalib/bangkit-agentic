@@ -24,3 +24,5 @@ ai-service/corpus/*.jsonl
 *.egg-info/
 build/
 dist/
+web/.next/
+web/node_modules/
