@@ -2,9 +2,9 @@ name: ai-service CI
 
 on:
   push:
-    paths: ["ai-service/**", ".github/workflows/ci.yml"]
+    paths: ["ai-service/**", "web/data/**", ".github/workflows/ci.yml"]
   pull_request:
-    paths: ["ai-service/**"]
+    paths: ["ai-service/**", "web/data/**"]
 
 jobs:
   test:
@@ -21,7 +21,7 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Lint
         run: ruff check .
-      - name: Tests
+      - name: Tests (incl. eval smoke)
         run: pytest -q
 
   docker:
@@ -29,5 +29,5 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v4
-      - name: Build image
-        run: docker build -t bangkit-ai-service ./ai-service
+      - name: Build image (context = repo root)
+        run: docker build -f ai-service/Dockerfile -t bangkit-ai-service .
