@@ -1,0 +1,9 @@
+{
+  "extends": "../.eslintrc.json",
+  "rules": {
+    "max-len": "off",
+    "spellcheck/spell-checker": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "prettier/prettier": "off"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "cSpell.enableFiletypes": [
+    "!javascript"
+  ],
+  "cSpell.ignoreWords": [
+    "Mikroorganisma",
+    "Nutrisi",
+    "Teknologi",
+    "Makanan",
+    "Kelestarian",
+    "Alam",
+    "Sekitar",
+    "bakteria",
+    "mikroorganisma",
+    "tumbuhan",
+    "karbon",
+    "dioksida",
+    "fotosintesis",
+    "pemakanan",
+    "pencernaan",
+    "karbohidrat",
+    "protein",
+    "vitamin",
+    "nutrien",
+    "gizi",
+    "kalori",
+    "petrol",
+    "elektrik",
+    "tenaga",
+    "bahan",
+    "api",
+    "kereta",
+    "hibrid",
+    "biodiesel",
+    "mikroalga",
+    "eutrofikasi",
+    "pencemaran",
+    "pemuliharaan"
+  ],
+  "cSpell.language": "en,ms",
+  "[javascript]": {
+    "editor.maxTokenizationLineLength": 20000
+  }
+}

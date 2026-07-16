@@ -1,0 +1,471 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-white text-gray-900;
+  }
+}
+
+@layer components {
+  .text-selection {
+    background-color: rgba(59, 130, 246, 0.3);
+    border-radius: 2px;
+    cursor: pointer;
+  }
+  
+  .chapter-item {
+    @apply px-4 py-2 rounded-lg cursor-pointer transition-all duration-200 hover:bg-primary-50;
+  }
+  
+  .chapter-item.active {
+    @apply bg-primary-600 text-white hover:bg-primary-700;
+  }
+  
+  .subchapter-item {
+    @apply px-4 py-1.5 pl-8 text-sm rounded-lg cursor-pointer transition-all duration-200 hover:bg-primary-50;
+  }
+  
+  .subchapter-item.active {
+    @apply bg-primary-100 text-primary-700 font-medium;
+  }
+
+  .quiz-option {
+    @apply p-4 rounded-lg border-2 border-gray-200 cursor-pointer transition-all duration-200 hover:border-primary-400 hover:bg-primary-50;
+  }
+
+  .quiz-option.selected {
+    @apply border-primary-600 bg-primary-50;
+  }
+
+  .quiz-option.correct {
+    @apply border-green-600 bg-green-50;
+  }
+
+  .quiz-option.incorrect {
+    @apply border-red-600 bg-red-50;
+  }
+
+  .difficulty-badge {
+    @apply px-3 py-1 rounded-full text-sm font-medium cursor-pointer transition-all duration-200;
+  }
+
+  .difficulty-badge.beginner {
+    @apply bg-green-100 text-green-700 hover:bg-green-200;
+  }
+
+  .difficulty-badge.beginner.active {
+    @apply bg-green-600 text-white;
+  }
+
+  .difficulty-badge.intermediate {
+    @apply bg-yellow-100 text-yellow-700 hover:bg-yellow-200;
+  }
+
+  .difficulty-badge.intermediate.active {
+    @apply bg-yellow-600 text-white;
+  }
+
+  .difficulty-badge.advanced {
+    @apply bg-orange-100 text-orange-700 hover:bg-orange-200;
+  }
+
+  .difficulty-badge.advanced.active {
+    @apply bg-orange-600 text-white;
+  }
+
+  .difficulty-badge.expert {
+    @apply bg-red-100 text-red-700 hover:bg-red-200;
+  }
+
+  .difficulty-badge.expert.active {
+    @apply bg-red-600 text-white;
+  }
+
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+}
+
+/* Markdown content styling */
+.markdown-content {
+  color: #172033;
+  font-size: 1.075rem;
+  line-height: 1.85;
+  text-rendering: optimizeLegibility;
+}
+
+.markdown-content h1 {
+  @apply text-3xl font-bold mt-6 mb-5 text-primary-900;
+  line-height: 1.2;
+}
+
+.markdown-content h2 {
+  @apply text-2xl font-bold mt-8 mb-4 text-primary-800;
+  line-height: 1.25;
+}
+
+.markdown-content h3 {
+  @apply text-xl font-semibold mt-6 mb-3 text-primary-700;
+  line-height: 1.3;
+}
+
+.markdown-content p {
+  @apply mb-5 text-gray-800; 
+  line-height: 1.8;
+}
+
+.markdown-content ul {
+  @apply list-disc mb-4 space-y-2 pl-6;
+}
+
+.markdown-content ol {
+  @apply mb-6 space-y-3 pl-0;
+  counter-reset: lesson-step;
+  list-style: none;
+}
+
+.markdown-content li {
+  @apply text-gray-800;
+  line-height: 1.75;
+}
+
+.markdown-content ol > li {
+  @apply relative rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm;
+  counter-increment: lesson-step;
+  padding-left: 3.25rem;
+}
+
+.markdown-content ol > li::before {
+  content: counter(lesson-step);
+  position: absolute;
+  left: 1rem;
+  top: 0.85rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 999px;
+  background: #1e40af;
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.55rem;
+  text-align: center;
+}
+
+.markdown-content strong {
+  @apply font-semibold text-gray-900;
+}
+
+.markdown-content em {
+  @apply italic;
+}
+
+.markdown-content code {
+  @apply rounded font-mono text-primary-700;
+  background: #eef4ff;
+  font-size: 0.95em;
+  padding: 0.12rem 0.35rem;
+}
+
+.markdown-content pre {
+  @apply mb-7 overflow-x-auto rounded-xl border shadow-sm;
+  background: linear-gradient(180deg, #fbfdff 0%, #f4f7fb 100%);
+  border-color: #dbe5f2;
+  border-left: 5px solid #1e40af;
+  padding: 1.35rem 1.5rem;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  color: #12357a;
+  display: block;
+  font-family: "Segoe UI", Inter, system-ui, sans-serif;
+  font-size: 1.12rem;
+  font-weight: 650;
+  line-height: 2;
+  padding: 0;
+  white-space: pre-wrap;
+}
+
+.markdown-content blockquote {
+  @apply border-l-4 border-primary-500 pl-4 italic text-gray-600 my-4;
+}
+
+.markdown-content img {
+  display: block;
+  width: 100%;
+  max-width: 780px;
+  height: auto;
+  margin: 1.5rem auto 0.6rem;
+  border: 1px solid #dbe5f2;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12);
+}
+
+.markdown-content p:has(> img) {
+  margin-bottom: 0.5rem;
+}
+
+/* Table styling with borders */
+.markdown-content table {
+  @apply w-full mb-6 border-collapse;
+  border: 1px solid #e2e8f0;
+  table-layout: fixed;
+}
+
+.markdown-content thead {
+  @apply bg-primary-50;
+}
+
+.markdown-content th {
+  @apply border border-gray-300 px-4 py-3 text-left font-semibold text-primary-900;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.markdown-content td {
+  @apply border border-gray-300 px-4 py-3 text-gray-700;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.markdown-content tbody tr:nth-child(even) {
+  @apply bg-gray-50;
+}
+
+.markdown-content tbody tr:hover {
+  @apply bg-primary-50 transition-colors duration-150;
+}
+
+/* Stable lesson typography for subject pages */
+.lesson-markdown {
+  font-size: 1rem;
+  line-height: 1.75;
+  color: #1f2937;
+}
+
+.lesson-markdown h1,
+.lesson-markdown h2,
+.lesson-markdown h3,
+.lesson-markdown h4 {
+  letter-spacing: 0;
+}
+
+.lesson-markdown h1 {
+  font-size: 1.75rem;
+  line-height: 1.2;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.lesson-markdown h2 {
+  font-size: 1.45rem;
+  line-height: 1.25;
+  margin-top: 1.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.lesson-markdown h3 {
+  font-size: 1.2rem;
+  line-height: 1.3;
+  margin-top: 1.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.lesson-markdown p,
+.lesson-markdown li,
+.lesson-markdown td,
+.lesson-markdown th {
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.lesson-markdown p {
+  margin-bottom: 1rem;
+}
+
+.lesson-markdown ul {
+  margin-bottom: 1rem;
+  padding-left: 1.35rem;
+}
+
+.lesson-markdown ol {
+  margin-bottom: 1.25rem;
+}
+
+.lesson-markdown ol > li {
+  padding: 0.8rem 1rem 0.8rem 3rem;
+}
+
+.lesson-markdown ol > li::before {
+  top: 0.85rem;
+}
+
+.lesson-markdown table {
+  font-size: 1rem;
+}
+
+.lesson-markdown th,
+.lesson-markdown td {
+  padding: 0.75rem 0.9rem;
+}
+
+.lesson-markdown pre code {
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+/* React Flow Custom Styling */
+.react-flow__node {
+  cursor: pointer;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.react-flow__controls {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.react-flow__minimap {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth animations */
+.react-flow__node {
+  transition: transform 0.2s ease;
+}
+
+.react-flow__node:hover {
+  transform: scale(1.05);
+}
+
+/* Dashboard calendar */
+.react-calendar {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #020617;
+  font-family: inherit;
+  padding: 4px;
+}
+
+.react-calendar button {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+}
+
+.react-calendar__navigation {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.react-calendar__navigation__label {
+  color: #020617;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.react-calendar__navigation__arrow {
+  display: grid;
+  height: 26px;
+  place-items: center;
+  border: 1px solid rgba(30, 58, 138, 0.25) !important;
+  border-radius: 8px;
+  color: #1e3a8a;
+}
+
+.react-calendar__month-view__weekdays {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  color: #64748b;
+  font-size: 0.6rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+  text-align: center;
+}
+
+.react-calendar__month-view__weekdays abbr {
+  text-decoration: none;
+}
+
+.react-calendar__month-view__days {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.react-calendar__tile {
+  position: relative;
+  height: 18px;
+  border-radius: 8px;
+  color: #020617;
+  font-size: 0.62rem;
+  font-weight: 500;
+}
+
+.dashboard-calendar.react-calendar {
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  background: rgba(250, 204, 21, 0.22);
+  color: #020617;
+}
+
+.react-calendar__tile--now {
+  background: rgba(30, 58, 138, 0.08);
+  color: #1e3a8a;
+  font-weight: 800;
+}
+
+.react-calendar__tile--active {
+  background: #1e3a8a !important;
+  color: #facc15 !important;
+}
+
+.react-calendar__month-view__days__day--neighboringMonth {
+  color: #cbd5e1;
+}
+
+.react-calendar__tile.has-deadline::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: #facc15;
+  transform: translateX(-50%);
+}
