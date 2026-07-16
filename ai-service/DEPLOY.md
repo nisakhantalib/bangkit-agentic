@@ -35,8 +35,9 @@ az group create -n $RG -l $LOC
 az acr create -n $ACR -g $RG --sku Basic
 az containerapp env create -n bangkit-env -g $RG -l $LOC
 
-# 2) first image build (in the cloud, from your repo clone)
-az acr build -r $ACR -t bangkit-ai-service:init -f ai-service/Dockerfile .
+# 2) create the app with a public placeholder image (free-tier subscriptions
+#    have ACR Tasks cloud builds disabled, so the real image is built and
+#    pushed by the GitHub Actions deploy workflow on first run)
 
 # 3) create the app (system identity pulls from ACR; scales to zero)
 az containerapp create -n $APP -g $RG --environment bangkit-env \

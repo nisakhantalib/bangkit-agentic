@@ -13,7 +13,6 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Dormant until you set the repo variable DEPLOY_ENABLED=true
     if: vars.DEPLOY_ENABLED == 'true'
     steps:
       - uses: actions/checkout@v4
@@ -25,14 +24,19 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push image (ACR cloud build)
+      # Build on the runner and push to ACR. (ACR Tasks cloud builds are
+      # disabled on free-tier subscriptions, so we build here instead.)
+      - name: Log in to ACR
+        run: az acr login --name "${{ vars.ACR_NAME }}"
+
+      - name: Build and push image
+        env:
+          IMAGE: ${{ vars.ACR_NAME }}.azurecr.io/bangkit-ai-service
         run: |
-          az acr build \
-            --registry "${{ vars.ACR_NAME }}" \
-            --image "bangkit-ai-service:${{ github.sha }}" \
-            --image "bangkit-ai-service:latest" \
-            --file ai-service/Dockerfile \
-            .
+          docker build -f ai-service/Dockerfile \
+            -t "$IMAGE:${{ github.sha }}" -t "$IMAGE:latest" .
+          docker push "$IMAGE:${{ github.sha }}"
+          docker push "$IMAGE:latest"
 
       - name: Deploy to Azure Container Apps
         run: |
@@ -40,6 +44,10 @@ jobs:
             --name "${{ vars.CONTAINERAPP_NAME }}" \
             --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
             --image "${{ vars.ACR_NAME }}.azurecr.io/bangkit-ai-service:${{ github.sha }}"
+          az containerapp ingress update \
+            --name "${{ vars.CONTAINERAPP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --target-port 8000 --type external
 
       - name: Show app URL
         run: |
