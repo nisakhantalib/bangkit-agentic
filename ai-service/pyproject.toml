@@ -9,6 +9,7 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "groq>=0.9",
+    "langgraph>=1.0",
 ]
 
 [project.optional-dependencies]
