@@ -19,3 +19,8 @@ chroma_data/
 
 # Generated RAG corpus
 ai-service/corpus/*.jsonl
+
+# Python build artifacts
+*.egg-info/
+build/
+dist/
