@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     environment: str = "dev"
 
     # "hashing" (offline, dev/CI) or "fastembed" (BGE, production quality)
-    embedder: str = "hashing"
+    embedder: str = "hashing"  # reliable default; set "fastembed" for BGE-quality
 
     # Comma-separated allowed origins for CORS; empty = same-origin only
     cors_origins: str = ""

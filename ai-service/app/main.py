@@ -19,20 +19,41 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def _make_embedder(kind: str):
+def _build_index(kind: str):
+    """Build (embedder, store), guaranteeing a populated store when a corpus exists.
+
+    fastembed downloads a model at first use and can fail on constrained hosts;
+    if embedding/ingest fails for any reason, fall back to the dependency-free
+    hashing embedder so retrieval still works (reduced quality) rather than the
+    store coming up empty and every answer losing its grounding.
+    """
+    from app.rag.embeddings import HashingEmbedder
+
+    def _try(embedder, label):
+        store = ingest(embedder=embedder)
+        logger.info("ingested %d chunks (embedder=%s)", len(store), label)
+        return embedder, store
+
     if kind == "fastembed":
         try:
             from app.rag.embeddings import FastEmbedEmbedder
 
-            return FastEmbedEmbedder()
-        except Exception:  # missing package, model download failure, etc.
-            logger.exception(
-                "fastembed unavailable - falling back to hashing embedder "
-                "(retrieval quality reduced; fix the image or unset EMBEDDER)"
-            )
-    from app.rag.embeddings import HashingEmbedder
+            return _try(FastEmbedEmbedder(), "fastembed")
+        except FileNotFoundError:
+            logger.warning("no corpus found; retriever will return no results")
+            from app.rag.store import VectorStore
 
-    return HashingEmbedder()
+            return HashingEmbedder(), VectorStore()
+        except Exception:
+            logger.exception("fastembed failed; falling back to hashing embedder")
+
+    try:
+        return _try(HashingEmbedder(), "hashing")
+    except FileNotFoundError:
+        logger.warning("no corpus found; retriever will return no results")
+        from app.rag.store import VectorStore
+
+        return HashingEmbedder(), VectorStore()
 
 
 def create_app() -> FastAPI:
@@ -52,15 +73,7 @@ def create_app() -> FastAPI:
     model_router = ModelRouter(client=groq_client)
     app.state.model_router = model_router
 
-    embedder = _make_embedder(settings.embedder)
-    try:
-        store = ingest(embedder=embedder)
-        logger.info("ingested %d chunks (embedder=%s)", len(store), settings.embedder)
-    except FileNotFoundError:
-        from app.rag.store import VectorStore
-
-        store = VectorStore()
-        logger.warning("no corpus found; retriever will return no results")
+    embedder, store = _build_index(settings.embedder)
     retriever = Retriever(store, embedder)
 
     deps = GraphDeps(complete=model_router.complete, retriever=retriever)
