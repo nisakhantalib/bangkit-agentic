@@ -52,8 +52,11 @@ def supervisor_node(state: TutorState, deps: GraphDeps) -> dict:
     fallback_subject, fallback_chapter = _heuristic_scope(request)
 
     intents: list[str] = []
-    subject = fallback_subject
-    chapter = fallback_chapter
+    # Caller-provided scope is authoritative; only infer what wasn't given.
+    caller_subject = state.get("subject")
+    caller_chapter = state.get("chapter")
+    subject = caller_subject or fallback_subject
+    chapter = caller_chapter or fallback_chapter
 
     try:
         text, _ = deps.complete(
@@ -65,10 +68,11 @@ def supervisor_node(state: TutorState, deps: GraphDeps) -> dict:
         )
         parsed = _parse_json(text)
         intents = [i for i in parsed.get("intents", []) if i in {"tutor", "quiz", "mark"}]
-        subject = parsed.get("subject") or fallback_subject
-        chapter = parsed.get("chapter") or fallback_chapter
+        # Never let inference override an explicit caller value.
+        subject = caller_subject or parsed.get("subject") or fallback_subject
+        chapter = caller_chapter or parsed.get("chapter") or fallback_chapter
     except Exception:
-        pass  # fall through to heuristics
+        pass  # fall through to heuristics / caller values
 
     if not intents:
         intents = ["mark"] if state.get("student_answers") else ["tutor"]

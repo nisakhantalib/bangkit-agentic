@@ -37,6 +37,12 @@ class Retriever:
         query_vec = self._embedder.embed([query])[0]
         hits = self._store.query(query_vec, k=k, where=where or None)
 
+        # If a chapter filter over-narrows to nothing, fall back to subject-only
+        # so a mis-inferred chapter degrades gracefully instead of returning zero.
+        if not hits and where and "chapter" in where:
+            relaxed = {kk: vv for kk, vv in where.items() if kk != "chapter"}
+            hits = self._store.query(query_vec, k=k, where=relaxed or None)
+
         results: list[RetrievedChunk] = []
         for record, score in hits:
             meta = record.metadata
