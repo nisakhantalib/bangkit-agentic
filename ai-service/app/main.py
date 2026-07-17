@@ -21,9 +21,15 @@ logger = logging.getLogger(__name__)
 
 def _make_embedder(kind: str):
     if kind == "fastembed":
-        from app.rag.embeddings import FastEmbedEmbedder
+        try:
+            from app.rag.embeddings import FastEmbedEmbedder
 
-        return FastEmbedEmbedder()
+            return FastEmbedEmbedder()
+        except Exception:  # missing package, model download failure, etc.
+            logger.exception(
+                "fastembed unavailable - falling back to hashing embedder "
+                "(retrieval quality reduced; fix the image or unset EMBEDDER)"
+            )
     from app.rag.embeddings import HashingEmbedder
 
     return HashingEmbedder()

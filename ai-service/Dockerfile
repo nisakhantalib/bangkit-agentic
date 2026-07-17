@@ -19,6 +19,10 @@ RUN pip install --no-cache-dir .
 
 COPY --from=corpus /build/ai-service/corpus ./corpus
 
+# Pre-bake the BGE embedding model so cold starts never download from the network
+ENV FASTEMBED_CACHE_PATH=/srv/models
+RUN python -c "from fastembed import TextEmbedding; TextEmbedding('BAAI/bge-small-en-v1.5')"
+
 RUN useradd --create-home appuser && chown -R appuser:appuser /srv
 USER appuser
 
