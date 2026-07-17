@@ -35,3 +35,12 @@ def test_subject_filter_scopes_results():
 def test_source_is_formatted_with_titles():
     hits = _retriever().retrieve("mikroorganisma", subject="sains", k=1)
     assert "Mikroorganisma" in hits[0].source
+
+
+def test_chapter_filter_relaxes_when_empty():
+    """A chapter with no matches falls back to subject-only rather than empty."""
+    r = _retriever()
+    # chapter "99" doesn't exist; should still return sains hits via relaxation
+    hits = r.retrieve("mikroorganisma", subject="sains", chapter="99", k=3)
+    assert hits
+    assert all(h.metadata["subject"] == "sains" for h in hits)

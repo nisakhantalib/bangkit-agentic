@@ -110,3 +110,28 @@ def test_multi_step_plan_executes_both():
     out = build_graph(deps).invoke({"request": "Explain chapter 1 then quiz me"})
     assert out["answer"] and out["quiz"]  # both steps produced output
     assert out["plan"] == []  # plan fully consumed
+
+
+def test_caller_scope_survives_supervisor_override():
+    """Explicit subject/chapter from the caller must not be overwritten by the LLM."""
+    import json as _json
+
+    def script(messages, tier):
+        sys = _system_of(messages)
+        if "router" in sys:
+            # LLM tries to say something different from the caller
+            return _json.dumps({"intents": ["tutor"], "subject": "matematik", "chapter": "9"})
+        return "Grounded answer. [Bab 1]"
+
+    captured = {}
+
+    class ScopeCapturingRetriever(FakeRetriever):
+        def retrieve(self, query, k=6, subject=None, chapter=None):
+            captured["subject"] = subject
+            captured["chapter"] = chapter
+            return super().retrieve(query, k=k, subject=subject, chapter=chapter)
+
+    deps = GraphDeps(complete=make_complete(script), retriever=ScopeCapturingRetriever())
+    build_graph(deps).invoke({"request": "Apa itu mikroorganisma?", "subject": "sains", "chapter": "1"})
+    assert captured["subject"] == "sains"  # not "matematik"
+    assert captured["chapter"] == "1"      # not "9"
