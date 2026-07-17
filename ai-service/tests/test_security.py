@@ -63,3 +63,11 @@ def test_accepts_correct_key(monkeypatch):
 def test_health_never_requires_key(monkeypatch):
     monkeypatch.setenv("SERVICE_API_KEY", "secret123")
     assert _client().get("/health").status_code == 200
+
+
+def test_app_boots_even_if_fastembed_selected_but_broken(monkeypatch):
+    """A bad EMBEDDER config must degrade to hashing, never crash startup."""
+    monkeypatch.setenv("EMBEDDER", "fastembed")
+    app = create_app()  # would raise before the graceful-fallback fix
+    client = TestClient(app)
+    assert client.get("/health").status_code == 200
