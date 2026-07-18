@@ -135,3 +135,82 @@ def test_caller_scope_survives_supervisor_override():
     build_graph(deps).invoke({"request": "Apa itu mikroorganisma?", "subject": "sains", "chapter": "1"})
     assert captured["subject"] == "sains"  # not "matematik"
     assert captured["chapter"] == "1"      # not "9"
+
+
+# ---- Verification loop ----
+
+def _verify_script(verdicts):
+    """Script a run: supervisor -> tutor -> verifier (popping verdicts in order)."""
+    remaining = list(verdicts)
+
+    def script(messages, tier):
+        sys = _system_of(messages)
+        if "router" in sys:
+            return json.dumps({"intents": ["tutor"], "subject": "sains", "chapter": "1"})
+        if "fact-checker" in sys:
+            return json.dumps(remaining.pop(0))
+        return "Mikroorganisma ialah organisma seni. [Bab 1 > 1.1]"
+
+    return script
+
+
+def _tutor_calls(complete):
+    return [
+        (m, t) for m, t in complete.calls
+        if "SPM tutor" in _system_of(m)
+    ]
+
+
+def test_supported_answer_passes_verification_once():
+    complete = make_complete(_verify_script([{"supported": True, "unsupported_claims": []}]))
+    graph = build_graph(GraphDeps(complete=complete, retriever=FakeRetriever()))
+    out = graph.invoke({"request": "Apakah mikroorganisma?"})
+    assert out["answer"]
+    assert out["verification"]["supported"] is True
+    assert len(_tutor_calls(complete)) == 1  # no revision happened
+
+
+def test_unsupported_answer_triggers_one_revision_with_feedback():
+    complete = make_complete(_verify_script([
+        {"supported": False, "unsupported_claims": ["virus lebih besar daripada bakteria"]},
+        {"supported": True, "unsupported_claims": []},
+    ]))
+    graph = build_graph(GraphDeps(complete=complete, retriever=FakeRetriever()))
+    out = graph.invoke({"request": "Apakah mikroorganisma?"})
+
+    tutor_calls = _tutor_calls(complete)
+    assert len(tutor_calls) == 2  # original + exactly one revision
+    revision_user = next(m["content"] for m in tutor_calls[1][0] if m["role"] == "user")
+    assert "virus lebih besar" in revision_user  # feedback reached the revision
+    assert out["verification"]["supported"] is True
+
+
+def test_persistently_unsupported_answer_is_bounded_not_looped():
+    """Two failing verdicts must still terminate: one revision max, then accept."""
+    complete = make_complete(_verify_script([
+        {"supported": False, "unsupported_claims": ["claim A"]},
+        {"supported": False, "unsupported_claims": ["claim B"]},
+    ]))
+    graph = build_graph(GraphDeps(complete=complete, retriever=FakeRetriever()))
+    out = graph.invoke({"request": "Apakah mikroorganisma?"})
+    assert len(_tutor_calls(complete)) == 2  # bounded: never a third attempt
+    assert out["answer"]  # availability preserved despite failed verification
+    assert out["verification"]["supported"] is False  # honest status reported
+
+
+def test_broken_verifier_fails_open():
+    """Verifier returning junk must pass the answer through, not crash or loop."""
+    def script(messages, tier):
+        sys = _system_of(messages)
+        if "router" in sys:
+            return json.dumps({"intents": ["tutor"], "subject": "sains", "chapter": "1"})
+        if "fact-checker" in sys:
+            return "I am not JSON at all"
+        return "Jawapan tutor."
+
+    complete = make_complete(script)
+    graph = build_graph(GraphDeps(complete=complete, retriever=FakeRetriever()))
+    out = graph.invoke({"request": "Apakah mikroorganisma?"})
+    assert out["answer"] == "Jawapan tutor."
+    assert out["verification"]["checked"] is False
+    assert len(_tutor_calls(complete)) == 1
