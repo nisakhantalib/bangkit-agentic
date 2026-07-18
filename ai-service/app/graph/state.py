@@ -23,3 +23,8 @@ class TutorState(TypedDict, total=False):
     marking: Optional[dict]
     student_answers: list[dict]
     error: Optional[str]
+    # Verification loop (tutor answers only): result of the check, feedback fed
+    # into a bounded single revision, and the attempt counter that bounds it.
+    verification: Optional[dict]
+    verification_feedback: Optional[str]
+    verify_attempts: int

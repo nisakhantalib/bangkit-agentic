@@ -30,6 +30,9 @@ class VectorStore:
     def __len__(self) -> int:
         return len(self._records)
 
+    def records(self) -> list[Record]:
+        return list(self._records)
+
     def query(
         self, embedding: list[float], k: int = 6, where: dict | None = None
     ) -> list[tuple[Record, float]]:

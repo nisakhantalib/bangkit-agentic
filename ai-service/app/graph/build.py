@@ -12,7 +12,7 @@ from functools import partial
 from langgraph.graph import END, START, StateGraph
 
 from app.graph.deps import GraphDeps
-from app.graph.nodes import mark_node, quiz_node, retrieve_node, tutor_node
+from app.graph.nodes import mark_node, quiz_node, retrieve_node, tutor_node, verify_node
 from app.graph.state import TutorState
 from app.graph.supervisor import supervisor_node
 
@@ -34,6 +34,20 @@ def _advance_plan(state: TutorState) -> dict:
     return {"plan": plan, "intent": plan[0] if plan else None}
 
 
+def _after_verify(state: TutorState) -> str:
+    """Revise once when the answer is unsupported; otherwise advance.
+
+    verify_attempts is incremented by verify_node itself, so "< 2" means: at
+    most one revision (attempt 1 verdict -> revise, attempt 2 verdict -> accept
+    whatever we have; availability beats perfection).
+    """
+    verification = state.get("verification") or {}
+    unsupported = verification.get("checked") and not verification.get("supported")
+    if unsupported and int(state.get("verify_attempts") or 0) < 2:
+        return "revise"
+    return "ok"
+
+
 def build_graph(deps: GraphDeps):
     graph = StateGraph(TutorState)
 
@@ -44,6 +58,7 @@ def build_graph(deps: GraphDeps):
     # for whichever step is running (a quiz step and a tutor step may differ in scope).
     graph.add_node("retrieve_tutor", partial(retrieve_node, deps=deps))
     graph.add_node("tutor", partial(tutor_node, deps=deps))
+    graph.add_node("verify", partial(verify_node, deps=deps))
     graph.add_node("retrieve_quiz", partial(retrieve_node, deps=deps))
     graph.add_node("quiz", partial(quiz_node, deps=deps))
     graph.add_node("retrieve_mark", partial(retrieve_node, deps=deps))
@@ -61,8 +76,15 @@ def build_graph(deps: GraphDeps):
     graph.add_edge("retrieve_quiz", "quiz")
     graph.add_edge("retrieve_mark", "mark")
 
-    # After each worker, advance the plan and loop back to dispatch the next step.
-    for worker in ("tutor", "quiz", "mark"):
+    # Tutor answers pass through fact-verification before advancing; one
+    # unsupported verdict sends the step back for a single revision (bounded by
+    # verify_attempts so a persistently failing check can never loop forever).
+    graph.add_edge("tutor", "verify")
+    graph.add_conditional_edges(
+        "verify", _after_verify, {"revise": "tutor", "ok": "advance"}
+    )
+    # Quiz and marking are schema-validated in their nodes; they advance directly.
+    for worker in ("quiz", "mark"):
         graph.add_edge(worker, "advance")
     graph.add_conditional_edges(
         "advance",
