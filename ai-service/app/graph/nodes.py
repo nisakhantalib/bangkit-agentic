@@ -218,3 +218,72 @@ def presenter_node(state: TutorState, deps: GraphDeps) -> dict:
     if error or spec is None or spec.kind == "none":
         return {}
     return {"visual": spec.model_dump(exclude_none=True)}
+
+
+# ---- Multimodal input: image transcription ----
+
+# Cap the accepted image so a hostile/huge upload can't blow past model limits
+# or memory. ~7MB of base64 ≈ ~5MB raw, comfortably above a phone photo.
+_MAX_IMAGE_B64 = 7_000_000
+
+
+def _looks_like_image_data_url(image: str) -> bool:
+    return isinstance(image, str) and image.startswith("data:image/") and ";base64," in image
+
+
+def transcribe_node(state: TutorState, deps: GraphDeps) -> dict:
+    """Read text from an uploaded image (e.g. a handwritten SPM answer).
+
+    Runs only when the request carries an image. Sends the image to a
+    vision-tier model and asks for a faithful transcription — nothing more:
+    marking happens downstream on the *text*, so this node's single job is
+    pixels -> text. The transcription is stored (and surfaced to the student
+    for correction) and, for a marking request, seeded as the student's answer.
+
+    Fails open: an oversized/invalid image or a vision-model failure leaves the
+    pipeline to proceed on whatever text was typed, never erroring out.
+    """
+    image = state.get("image")
+    if not image:
+        return {}
+    if not _looks_like_image_data_url(image) or len(image) > _MAX_IMAGE_B64:
+        return {"transcription": None}
+
+    system = (
+        "You transcribe exam answers from images. Output ONLY the text visible "
+        "in the image, verbatim, preserving line breaks and any working shown. "
+        "Do not solve, correct, translate, or comment. If a word is illegible, "
+        "write [?]. If the image contains no readable text, output exactly: (no text found)."
+    )
+    # Groq/OpenAI-style multimodal content: a text part plus an image_url part.
+    content = [
+        {"type": "text", "text": "Transcribe the handwritten answer in this image."},
+        {"type": "image_url", "image_url": {"url": image}},
+    ]
+
+    try:
+        text, _ = deps.complete(
+            [
+                {"role": "system", "content": system},
+                {"role": "user", "content": content},
+            ],
+            tier="vision",
+        )
+    except Exception:
+        # Vision unavailable -> continue with typed text (if any), no crash.
+        return {"transcription": None}
+
+    transcription = (text or "").strip()
+    if not transcription or transcription == "(no text found)":
+        return {"transcription": None}
+
+    updates: dict = {"transcription": transcription}
+    # For a marking request with no typed answer, use the transcription as the
+    # student's answer so the existing marker grades it unchanged.
+    if state.get("intent") == "mark" and not state.get("student_answers"):
+        updates["student_answers"] = [{"answer": transcription}]
+    # For a tutor/quiz request, fold the transcribed question into the request
+    # so retrieval and answering operate on it.
+    elif not state.get("request"):
+        updates["request"] = transcription
+    return updates

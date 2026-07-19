@@ -30,3 +30,7 @@ class TutorState(TypedDict, total=False):
     verify_attempts: int
     # Optional schema-validated render instructions from the presenter node.
     visual: Optional[dict]
+    # Multimodal input: a data-URL image and the text the vision model read
+    # from it. Transcription is surfaced so the student can correct misreads.
+    image: Optional[str]
+    transcription: Optional[str]

@@ -17,6 +17,7 @@ from app.graph.nodes import (
     presenter_node,
     quiz_node,
     retrieve_node,
+    transcribe_node,
     tutor_node,
     verify_node,
 )
@@ -59,6 +60,7 @@ def build_graph(deps: GraphDeps):
     graph = StateGraph(TutorState)
 
     graph.add_node("supervisor", partial(supervisor_node, deps=deps))
+    graph.add_node("transcribe", partial(transcribe_node, deps=deps))
     graph.add_node("advance", _advance_plan)
 
     # Each worker is a retrieve step chained to its producer, so context is fresh
@@ -73,8 +75,12 @@ def build_graph(deps: GraphDeps):
     graph.add_node("mark", partial(mark_node, deps=deps))
 
     graph.add_edge(START, "supervisor")
+    # Transcription (if an image was uploaded) runs once, after intent/scope are
+    # known but before any worker: it may set student_answers or the request
+    # text that retrieval and marking then consume.
+    graph.add_edge("supervisor", "transcribe")
     graph.add_conditional_edges(
-        "supervisor",
+        "transcribe",
         _dispatch,
         {"retrieve_tutor": "retrieve_tutor", "retrieve_quiz": "retrieve_quiz",
          "retrieve_mark": "retrieve_mark", END: END},

@@ -30,6 +30,7 @@ export async function callAgentService({
   subject,
   chapter,
   studentAnswers = [],
+  image = null,
   timeoutMs = 30000,
 }) {
   if (!BASE_URL) {
@@ -51,6 +52,7 @@ export async function callAgentService({
         subject: subject ?? null,
         chapter: chapter ?? null,
         student_answers: studentAnswers,
+        image: image ?? null,
       }),
       signal: controller.signal,
     })

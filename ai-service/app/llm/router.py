@@ -17,7 +17,7 @@ from typing import Callable, Literal, Sequence
 
 logger = logging.getLogger(__name__)
 
-Tier = Literal["fast", "smart"]
+Tier = Literal["fast", "smart", "vision"]
 
 # client(model_id, messages, **kwargs) -> str
 LLMClient = Callable[..., str]
@@ -40,6 +40,9 @@ class ModelSpec:
 DEFAULT_MODELS: tuple[ModelSpec, ...] = (
     ModelSpec("llama-3.3-70b-versatile", "smart"),
     ModelSpec("llama-3.1-8b-instant", "fast"),
+    # Vision-capable models accept image content blocks (transcription/OCR).
+    ModelSpec("meta-llama/llama-4-scout-17b-16e-instruct", "vision"),
+    ModelSpec("meta-llama/llama-4-maverick-17b-128e-instruct", "vision"),
 )
 
 
@@ -101,8 +104,14 @@ class ModelRouter:
     def _candidates(self, tier: Tier) -> list[ModelSpec]:
         now = self._clock()
         healthy = [m for m in self._models if self._state[m.id].cooldown_until <= now]
+        # "vision" is a hard requirement, not a preference: a text-only model
+        # cannot read an image, so we must never fall through to one. Other
+        # tiers stay soft — a smaller model beats no answer. We also never fall
+        # UP into a vision model for a text request (they are pricier/slower).
+        if tier == "vision":
+            return [m for m in healthy if m.tier == "vision"]
         preferred = [m for m in healthy if m.tier == tier]
-        rest = [m for m in healthy if m.tier != tier]
+        rest = [m for m in healthy if m.tier not in (tier, "vision")]
         return preferred + rest
 
     def _penalize(self, model_id: str) -> None:

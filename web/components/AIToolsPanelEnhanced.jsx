@@ -11,8 +11,7 @@ import {
   CreditCard,
   ChevronDown,
   ChevronUp,
-  Loader2
-} from 'lucide-react'
+  Loader2, Image as ImageIcon} from 'lucide-react'
 import DifficultySelector from './DifficultySelector'
 import StudyArtifactCard from './StudyArtifactCard'
 import ReactMarkdown from 'react-markdown'
@@ -81,6 +80,22 @@ export default function AIToolsPanelEnhanced({
   ])
 
   const [inputMessage, setInputMessage] = useState('')
+  const [pendingImage, setPendingImage] = useState(null) // { dataUrl, name }
+  const imageInputRef = useRef(null)
+
+  const handleImagePick = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) return
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be under 5MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => setPendingImage({ dataUrl: reader.result, name: file.name })
+    reader.readAsDataURL(file)
+    e.target.value = '' // allow re-picking the same file
+  }
   const [difficultyExpanded, setDifficultyExpanded] = useState(false)
   const [showDifficultyHint, setShowDifficultyHint] = useState(false)
   const [serverSessionId, setServerSessionId] = useState(null)
@@ -233,7 +248,7 @@ export default function AIToolsPanelEnhanced({
   }, [triggerExplanation])
 
   // Function to call AI API with task mode.
-  const callAIAPI = async (userMessage, mode = 'chat') => {
+  const callAIAPI = async (userMessage, mode = 'chat', image = null, intent = null) => {
     try {
       setIsLoading(true)
 
@@ -248,7 +263,9 @@ export default function AIToolsPanelEnhanced({
           difficulty,
           subjectKey,
           subjectTitle,
-          conversationHistory: chatMessages.slice(1)
+          conversationHistory: chatMessages.slice(1),
+          image,
+          intent
         })
       })
 
@@ -257,7 +274,12 @@ export default function AIToolsPanelEnhanced({
       }
 
       const data = await response.json()
-      return { text: normalizeMathNotation(data.response), visual: data.visual || null }
+      return {
+        text: normalizeMathNotation(data.response || ''),
+        visual: data.visual || null,
+        transcription: data.transcription || null,
+        marking: data.marking || null
+      }
     } catch (error) {
       console.error('Error calling AI API:', error)
       return { text: 'Sorry, I encountered an error. Please try again.', visual: null }
@@ -267,25 +289,41 @@ export default function AIToolsPanelEnhanced({
   }
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return
+    if (!inputMessage.trim() && !pendingImage) return
 
     const currentInput = inputMessage
+    const image = pendingImage?.dataUrl || null
+    // An uploaded image with no explicit question is treated as "mark my
+    // handwritten answer"; with a question, it augments the question.
+    const intent = image && !currentInput.trim() ? 'mark' : null
 
     const newMessage = {
       id: chatMessages.length + 1,
       type: 'user',
-      content: currentInput
+      content: currentInput || (image ? '📷 (uploaded a photo of my answer)' : ''),
+      image
     }
 
     setChatMessages(prev => [...prev, newMessage])
     setInputMessage('')
+    setPendingImage(null)
 
-    const aiResponse = await callAIAPI(currentInput, 'chat')
+    const aiResponse = await callAIAPI(currentInput, 'chat', image, intent)
+
+    // Surface what the vision model read, so the student can catch a misread.
+    let content = aiResponse.text
+    if (aiResponse.transcription) {
+      content = `**📄 I read this from your image:**\n\n> ${aiResponse.transcription.replace(/\n/g, '\n> ')}\n\n---\n\n${aiResponse.text || ''}`
+    }
+    if (aiResponse.marking) {
+      const m = aiResponse.marking
+      content += `\n\n**Mark: ${m.total_awarded} / ${m.total_max}**\n\n${m.feedback || ''}`
+    }
 
     const aiMessage = {
       id: chatMessages.length + 2,
       type: 'assistant',
-      content: aiResponse.text,
+      content,
       visual: aiResponse.visual
     }
 
@@ -589,6 +627,9 @@ export default function AIToolsPanelEnhanced({
                         : 'bg-white text-gray-800 border border-gray-200'
                     }`}
                   >
+                    {message.image && (
+                      <img src={message.image} alt="uploaded" className="mb-1 max-h-40 rounded-lg border border-gray-200" />
+                    )}
                     {message.type === 'artifact' ? (
                       <StudyArtifactCard
                         artifact={message.artifact}
@@ -667,13 +708,37 @@ export default function AIToolsPanelEnhanced({
 
             {/* Chat Input */}
             <div className="flex-shrink-0 p-3 border-t border-gray-200 bg-white">
+              {pendingImage && (
+                <div className="mb-2 flex items-center gap-2 rounded-lg bg-purple-50 px-2 py-1 text-xs">
+                  <img src={pendingImage.dataUrl} alt="to send" className="h-8 w-8 rounded object-cover" />
+                  <span className="flex-1 truncate text-gray-600">{pendingImage.name}</span>
+                  <button onClick={() => setPendingImage(null)} className="text-gray-400 hover:text-gray-700">✕</button>
+                </div>
+              )}
               <div className="flex space-x-2">
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImagePick}
+                  className="hidden"
+                />
+                <motion.button
+                  onClick={() => imageInputRef.current?.click()}
+                  title="Upload a photo of your answer"
+                  className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  disabled={isLoading}
+                >
+                  <ImageIcon size={16} />
+                </motion.button>
                 <input
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
-                  placeholder="Ask a question..."
+                  placeholder={pendingImage ? 'Add a question, or send to mark my answer…' : 'Ask a question, or upload a photo…'}
                   disabled={isLoading}
                   className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary-500 text-xs disabled:bg-gray-100"
                 />
@@ -683,7 +748,7 @@ export default function AIToolsPanelEnhanced({
                   className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  disabled={!inputMessage.trim() || isLoading}
+                  disabled={(!inputMessage.trim() && !pendingImage) || isLoading}
                 >
                   {isLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                 </motion.button>
