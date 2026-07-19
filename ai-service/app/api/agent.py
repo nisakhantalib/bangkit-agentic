@@ -31,6 +31,7 @@ def run_agent(body: AgentRequest, request: Request) -> dict:
         "answer": result.get("answer"),
         "quiz": result.get("quiz"),
         "marking": result.get("marking"),
+        "visual": result.get("visual"),
         "sources": [c.get("source") for c in result.get("retrieved") or []],
         "error": result.get("error"),
     }

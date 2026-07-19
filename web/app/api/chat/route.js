@@ -86,7 +86,7 @@ export async function POST(request) {
           subject: subjectKey === 'math' ? 'matematik' : 'sains',
         })
         if (result.answer) {
-          return NextResponse.json({ response: result.answer, sources: result.sources, via: 'agent-service' })
+          return NextResponse.json({ response: result.answer, sources: result.sources, visual: result.visual, via: 'agent-service' })
         }
         // No answer (e.g. service error) -> fall through to Groq path.
         console.warn('agent service returned no answer, falling back to Groq:', result.error)

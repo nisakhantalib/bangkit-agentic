@@ -28,3 +28,5 @@ class TutorState(TypedDict, total=False):
     verification: Optional[dict]
     verification_feedback: Optional[str]
     verify_attempts: int
+    # Optional schema-validated render instructions from the presenter node.
+    visual: Optional[dict]

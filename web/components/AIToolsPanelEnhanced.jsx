@@ -17,6 +17,7 @@ import DifficultySelector from './DifficultySelector'
 import StudyArtifactCard from './StudyArtifactCard'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import VisualBlock from './VisualBlock'
 
 const normalizeMathNotation = (content = '') => {
   return content
@@ -256,10 +257,10 @@ export default function AIToolsPanelEnhanced({
       }
 
       const data = await response.json()
-      return normalizeMathNotation(data.response)
+      return { text: normalizeMathNotation(data.response), visual: data.visual || null }
     } catch (error) {
       console.error('Error calling AI API:', error)
-      return 'Sorry, I encountered an error. Please try again.'
+      return { text: 'Sorry, I encountered an error. Please try again.', visual: null }
     } finally {
       setIsLoading(false)
     }
@@ -284,7 +285,8 @@ export default function AIToolsPanelEnhanced({
     const aiMessage = {
       id: chatMessages.length + 2,
       type: 'assistant',
-      content: aiResponse
+      content: aiResponse.text,
+      visual: aiResponse.visual
     }
 
     setChatMessages(prev => [...prev, aiMessage])
@@ -314,7 +316,8 @@ export default function AIToolsPanelEnhanced({
     const aiExplanation = {
       id: chatMessages.length + 2,
       type: 'assistant',
-      content: aiResponse
+      content: aiResponse.text,
+      visual: aiResponse.visual
     }
 
     setChatMessages(prev => [...prev, aiExplanation])
@@ -593,12 +596,15 @@ export default function AIToolsPanelEnhanced({
                         onRegenerate={() => generateStudyArtifact(message.artifact.tool, 'chat')}
                       />
                     ) : (
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        className="markdown-content text-xs leading-relaxed"
-                      >
-                        {message.content}
-                      </ReactMarkdown>
+                      <>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          className="markdown-content text-xs leading-relaxed"
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                        {message.visual ? <VisualBlock visual={message.visual} /> : null}
+                      </>
                     )}
                   </div>
                 </motion.div>
