@@ -12,7 +12,15 @@ from functools import partial
 from langgraph.graph import END, START, StateGraph
 
 from app.graph.deps import GraphDeps
-from app.graph.nodes import mark_node, quiz_node, retrieve_node, tutor_node, verify_node
+from app.graph.nodes import (
+    mark_node,
+    presenter_node,
+    quiz_node,
+    retrieve_node,
+    transcribe_node,
+    tutor_node,
+    verify_node,
+)
 from app.graph.state import TutorState
 from app.graph.supervisor import supervisor_node
 
@@ -52,6 +60,7 @@ def build_graph(deps: GraphDeps):
     graph = StateGraph(TutorState)
 
     graph.add_node("supervisor", partial(supervisor_node, deps=deps))
+    graph.add_node("transcribe", partial(transcribe_node, deps=deps))
     graph.add_node("advance", _advance_plan)
 
     # Each worker is a retrieve step chained to its producer, so context is fresh
@@ -59,14 +68,19 @@ def build_graph(deps: GraphDeps):
     graph.add_node("retrieve_tutor", partial(retrieve_node, deps=deps))
     graph.add_node("tutor", partial(tutor_node, deps=deps))
     graph.add_node("verify", partial(verify_node, deps=deps))
+    graph.add_node("presenter", partial(presenter_node, deps=deps))
     graph.add_node("retrieve_quiz", partial(retrieve_node, deps=deps))
     graph.add_node("quiz", partial(quiz_node, deps=deps))
     graph.add_node("retrieve_mark", partial(retrieve_node, deps=deps))
     graph.add_node("mark", partial(mark_node, deps=deps))
 
     graph.add_edge(START, "supervisor")
+    # Transcription (if an image was uploaded) runs once, after intent/scope are
+    # known but before any worker: it may set student_answers or the request
+    # text that retrieval and marking then consume.
+    graph.add_edge("supervisor", "transcribe")
     graph.add_conditional_edges(
-        "supervisor",
+        "transcribe",
         _dispatch,
         {"retrieve_tutor": "retrieve_tutor", "retrieve_quiz": "retrieve_quiz",
          "retrieve_mark": "retrieve_mark", END: END},
@@ -80,9 +94,12 @@ def build_graph(deps: GraphDeps):
     # unsupported verdict sends the step back for a single revision (bounded by
     # verify_attempts so a persistently failing check can never loop forever).
     graph.add_edge("tutor", "verify")
+    # Verified answers flow through the presenter, which may attach one
+    # schema-validated visual (diagram / table / slides) before advancing.
     graph.add_conditional_edges(
-        "verify", _after_verify, {"revise": "tutor", "ok": "advance"}
+        "verify", _after_verify, {"revise": "tutor", "ok": "presenter"}
     )
+    graph.add_edge("presenter", "advance")
     # Quiz and marking are schema-validated in their nodes; they advance directly.
     for worker in ("quiz", "mark"):
         graph.add_edge(worker, "advance")

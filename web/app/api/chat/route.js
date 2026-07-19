@@ -61,15 +61,17 @@ export async function POST(request) {
       context = '',
       subjectKey = 'science',
       subjectTitle,
-      conversationHistory = []
+      conversationHistory = [],
+      image = null,
+      intent = null
     } = await request.json()
     const subject = getSubjectForRequest(subjectKey, subjectTitle)
     const currentSubjectTitle = subject.title
     const subjectTopics = getSubjectTopicBullets(subject)
 
-    if (!message) {
+    if (!message && !image) {
       return NextResponse.json(
-        { error: 'Message is required' },
+        { error: 'A message or an image is required' },
         { status: 400 }
       )
     }
@@ -82,11 +84,20 @@ export async function POST(request) {
     if (isAgentServiceEnabled()) {
       try {
         const result = await callAgentService({
-          request: message,
+          request: message || '',
           subject: subjectKey === 'math' ? 'matematik' : 'sains',
+          image,
+          studentAnswers: intent === 'mark' && message ? [{ answer: message }] : [],
         })
-        if (result.answer) {
-          return NextResponse.json({ response: result.answer, sources: result.sources, via: 'agent-service' })
+        if (result.answer || result.marking || result.transcription) {
+          return NextResponse.json({
+            response: result.answer || '',
+            sources: result.sources,
+            visual: result.visual,
+            marking: result.marking,
+            transcription: result.transcription,
+            via: 'agent-service'
+          })
         }
         // No answer (e.g. service error) -> fall through to Groq path.
         console.warn('agent service returned no answer, falling back to Groq:', result.error)

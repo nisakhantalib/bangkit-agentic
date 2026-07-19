@@ -13,6 +13,9 @@ class AgentRequest(BaseModel):
     subject: str | None = None
     chapter: str | None = None
     student_answers: list[dict] = []
+    # Optional data-URL image (e.g. a photographed handwritten answer). When
+    # present, a transcribe node converts it to text before marking/tutoring.
+    image: str | None = None
 
 
 @router.post("/v1/agent")
@@ -23,6 +26,7 @@ def run_agent(body: AgentRequest, request: Request) -> dict:
         "subject": body.subject,
         "chapter": body.chapter,
         "student_answers": body.student_answers,
+        "image": body.image,
     }
     result = graph.invoke(state)
     return {
@@ -31,6 +35,8 @@ def run_agent(body: AgentRequest, request: Request) -> dict:
         "answer": result.get("answer"),
         "quiz": result.get("quiz"),
         "marking": result.get("marking"),
+        "visual": result.get("visual"),
+        "transcription": result.get("transcription"),
         "sources": [c.get("source") for c in result.get("retrieved") or []],
         "error": result.get("error"),
     }
